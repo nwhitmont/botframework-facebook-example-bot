@@ -31,26 +31,6 @@ var connector = new builder.ChatConnector({
 });
 server.post('/api/messages', connector.listen());
 
-var bot = new builder.UniversalBot(connector, [
-    function (session) {
-        builder.Prompts.choice(session, 'What card would like to test?', CardNames, {
-            maxRetries: 3,
-            retryPrompt: 'Ooops, what you wrote is not a valid option, please try again'
-        });
-    },
-    function (session, results) {
-        // create the card based on selection
-        var selectedCardName = results.response.entity;
-        var card = createCard(selectedCardName, session);
-
-        // attach the card to the reply message
-        var msg = new builder.Message(session).addAttachment(card);
-        session.send(msg);
-        // end the conversation
-        session.endConversation();
-    }
-]);
-
 var HeroCardName = 'Hero card';
 var ThumbnailCardName = 'Thumbnail card';
 var ReceiptCardName = 'Receipt card';
@@ -58,6 +38,8 @@ var SigninCardName = 'Sign-in card';
 var AnimationCardName = "Animation card";
 var VideoCardName = "Video card";
 var AudioCardName = "Audio card";
+var EmojiChoicePrompt = "Emoji Choice Prompt";
+
 var CardNames = [
     HeroCardName,
     ThumbnailCardName,
@@ -65,8 +47,37 @@ var CardNames = [
     SigninCardName,
     AnimationCardName,
     VideoCardName,
-    AudioCardName
+    AudioCardName,
+    EmojiChoicePrompt
 ];
+
+var bot = new builder.UniversalBot(connector, [
+    function (session) {
+        builder.Prompts.choice(session, 'What would you like to test?', CardNames, {
+            maxRetries: 3,
+            retryPrompt: 'Ooops, what you wrote is not a valid option, please try again'
+        });
+    },
+    function (session, results) {
+        // create the card based on selection
+        var selectedCardName = results.response.entity;
+
+        if (selectedCardName === EmojiChoicePrompt) {
+            session.beginDialog('emoji_choice_prompt');
+        }
+        else {
+            var card = createCard(selectedCardName, session);
+
+            // attach the card to the reply message
+            var msg = new builder.Message(session).addAttachment(card);
+            session.send(msg);
+            // end the conversation
+            session.endConversation();
+        }
+    }
+]);
+
+
 
 function createCard(selectedCardName, session) {
     switch (selectedCardName) {
@@ -182,6 +193,18 @@ function createAudioCard(session) {
             builder.CardAction.openUrl(session, 'https://en.wikipedia.org/wiki/The_Empire_Strikes_Back', 'Read More')
         ]);
 }
+
+bot.dialog('emoji_choice_prompt', [
+    function (session) {
+        builder.Prompts.choice(session, "Select an emoji response:", ['Low 😊', 'Moderate 😐', 'High 😣']);
+    },
+    function (session, results) {
+        console.log('\n');
+        console.log(results.response)
+        session.send("You picked: " + results.response.entity);
+        session.endDialog();
+    }
+]);
 
 bot.dialog('exit', function (session) {
     session.endConversation('Goodbye!');
